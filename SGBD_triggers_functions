@@ -1,0 +1,155 @@
+	-- Omae Projects
+	/*
+	* Review Generale SQL SERVER 2008
+	* SGBD 2 
+	 */
+	 -- Permet de crée une bdd
+	create database omae 
+	go
+	-- utiliser la bdd (la base doit en use)
+	use omae
+	go
+	-- verification c'est la bdd existe ou pas !!
+	if db_id('') is not null
+	begin
+
+	end
+	go
+{
+-- exemple 1 
+/* creation d'une Procedure Stocker : 
+ la procedure stocker c'est un bou de code pres compilé,  il nous permet de 
+ l'utiliser sans savoir ce qu'il ya dedant, il est facile a utiliser , il est
+ rapide aussi a executé car il est deja compilé côté serveur, il peuvent être
+ avec parametre d'entrée au de sortie o même sont parameteres.
+*/
+
+-- creation d'une procedure stocker, a pour but de limiter l'insertion des donnée qu'apartir d'elle
+create procedure sp_test
+	@num int,@nom varchar(50),@age int
+as
+	begin -- debut de delemiteur
+			insert into test values (@num,@nom,@age)
+	end	-- fin de delimiteur
+
+-- execution de la procedure stockés [sp_test]
+	exec sp_test 10,'Omar',22
+-- procedure Avec parameteres De sortie
+create procedure sp_0_test
+	@nbr int output
+	as
+begin
+	set @nbr =(select count(*) from test)
+end
+
+-- execution de la procedure sp_0_test
+	declare @nombre int
+	exec sp_0_test @nombre output
+
+	print @nombre -- il va nous afficher le nombre des enregistrement de la table test
+
+}
+/*
+* les TRiggers
+* Definition : triggers autrement dit les declencheurs, ce sont un type des procedures stockés
+* il sont trés utile pour limiter l'acces a la bdd, qu'aprés la verification des condition crée
+* lors de l'insertion ou la modification ou la suppresion du donnée d'une bdd.
+ */
+-- TRiggers d'insertion : 
+	/*
+	* Au moment de lancement d'une requetes de selection, les donnés sont enregister dans une table
+	* temporaire porte le nom INSERTED puis on a une procedure de verification qui se lance, on verifiant
+	* que les donnée a inseret ne frein pas les constraint défini poue les champs, et respect aussi les 
+	* conditions défini pour le trigger d'insertion, dans le cas ou tous se passe bien, les donnés
+	* sont enregistrer dans la bdd conserner.
+	 */
+-- Exemple sur le Trigger d'insertion  : qui verifier que le numero ne depass pas 100
+
+	create trigger tr_insert_test
+		On test For insert
+	as
+		begin
+			declare @num int
+			set @num = (select num from INSERTED)
+			if(@num >100)
+			ROLLBACK -- cette instruction permet d'annuler l'operation d'ajout des donnés a la BDD
+		end
+
+-- TRiggers de Suppression : 
+	/**
+	*Definitions : Au moment de lancement d'une requetes sql de suppression on'a les données qui sont la resultat
+	* du requtes qui sont places dans une table temporaire qui s'appelle DELETED, et une procedure de verification
+	* se lance pour verifier que les donnée a supprimer ne cause aucun probleme au niveau de la bdd, comme etant 
+	* un clé etrangere .. dans le cas ou tous se passe bien, les donnés sont bien supprimer d'une maniére definitive.
+	 */
+-- Exemple d'un trigger de suppression : qui annule la suppression du agent on le salaire plus que 500 DH 
+
+	create trigger tr_delete_test
+		On test For DELETE
+	as
+		begin
+			declare @salaire money
+			set @salaire = (select salaire from DELETED)
+				if(@salaire>500)
+				ROLLBACK
+		end
+
+-- TRiggers de Modification : 
+	/**
+	*Definitions : Ce trigger et spécial, par ce qu'il combine entre les deux types de trigger d'insertion 
+	* et de suppression, Au moment de lancement d'une requetes sql de Modification on'a les données qui sont 
+	* deja dans la table sont placer dans la table temporaire DELETED, et les nouveau données se place dans
+	* la table temporaire INSERTED, et une procedure de verification se lance pour verifier que les donnée a 
+	*  supprimer et l'autre a mêtre ne cause aucun probleme au niveau de la bdd, comme etant 
+	* un clé etrangere .. dans le cas ou tous se passe bien, les donnés sont bien supprimer et les nouveaux
+	* donnée sont bien remplacer, et on a la modification qui va bien être effectué.
+	 */
+-- Exemple d'un trigger de Modification : qui annule la Modification du CIN d'agents
+
+	create trigger tr_update_Agent
+		On Agent FOR UPDATE
+	as
+		begin
+			if UPDATE(cinAgent) -- si on'a modifier le champs cinAgent l'operation de modification sera annuler.
+			ROLLBACK
+		end 
+
+-- les fonctions : 
+	/***
+	* il existe 3 type de fonction : 
+	* fonction scalaire qui retourne une seul valeur
+	* fonction table, qui retourne la resultat sous format d'une table
+	* 
+	*/
+-- Exemple d'une fonction scalaire qui nous retourne le nombre d'enregistrement pour une table
+-- donner en parameters!!
+
+	create function getNbrEnreg(@table varchar(50)) returns int
+		as
+	begin
+		return select count(*) from @table
+	end
+
+-- Exemple d'une fonction table qui nous return tous les enregistrement d'une table en parameters : 
+
+	create function getEnreg(@table varchar(50)) returns table
+		as
+	begin
+		select * from @table
+		return
+	end
+
+
+-- Exemple d'une fonction table qui return des champs préciser d'une table en parameters : 
+-- + table Multi_instructions(Multi-statement TABLE-Valued)
+
+	create function getEnregChamps(@table varchar(50))
+		returns @t table(num int,
+						 nom varchar(50),
+						 age int)
+		as
+	begin
+		insert into @t 
+			select num,nom,age from @table
+		return
+	end
